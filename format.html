@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>LSB Feed Parser</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, Verdana, sans-serif;
@@ -50,6 +51,7 @@
 
         .output {
             margin-top: 2rem;
+            position: relative;
         }
 
         .status {
@@ -217,6 +219,52 @@
             margin-top: 2rem;
             margin-bottom: 4px;
         }
+
+        .copy-button {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            background: #fb4100;
+            border: 1px solid #e5e5e5;
+            cursor: pointer;
+            font-family: 'Brandon Text Regular', Arial, sans-serif;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .material-icons {
+            font-size: 18px;
+        }
+
+        .copy-button:hover {
+            background: #000000;
+        }
+
+        .copy-button.copied {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        @keyframes loadingDots {
+            0% { content: ""; }
+            20% { content: "."; }
+            40% { content: ".."; }
+            60% { content: "..."; }
+            80% { content: ".."; }
+            100% { content: "."; }
+        }
+
+        .loading-dots::after {
+            content: ".";
+            display: inline-block;
+            animation: loadingDots 1.5s infinite;
+            width: 1em;
+        }
     </style>
 </head>
 <body>
@@ -253,6 +301,11 @@
             const markdownView = document.querySelector('.markdown-view');
             const richView = document.querySelector('.rich-view');
             const isRichView = document.getElementById('viewToggle').checked;
+            const copyButton = document.querySelector('.copy-button');
+            if (copyButton) {
+                const targetView = isRichView ? richView : markdownView;
+                targetView.appendChild(copyButton);
+            }
 
             markdownView.style.display = isRichView ? 'none' : 'block';
             richView.style.display = isRichView ? 'block' : 'none';
@@ -267,7 +320,8 @@
             const proxyUrl = 'https://api.allorigins.win/raw?url=';
             
             output.innerHTML = '';
-            status.textContent = 'Lade Feed...';
+            status.textContent = 'Lade Feed';
+            status.classList.add('loading-dots');
             logDiv.innerHTML = '';
             
             log('Starting feed processing...');
@@ -285,11 +339,10 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                log('Feed eingelesen ✅. Verarbeitung kann bis zu 1 Minute dauern...');
+                log('Feed eingelesen ✅. Verarbeitung kann bis zu 90 Sekunden dauern...');
+                status.textContent = 'Verarbeite Daten';
                 const text = await response.text();
                 log(`Received ${text.length} bytes of data`);
-                
-                status.textContent = 'Verarbeite Daten...';
                 
                 log('Parsing XML...');
                 const parser = new DOMParser();
@@ -424,7 +477,45 @@
                 markdownView.appendChild(markdownPre);
                 richView.appendChild(richDiv);
                 
-                status.textContent = `${sortedArtists.length} Künstler erfolgreich formatiert`;
+                // Add copy button to active view
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-button';
+                copyButton.innerHTML = '<i class="material-icons">content_copy</i>';
+                copyButton.onclick = async () => {
+                    const activeView = document.getElementById('viewToggle').checked ? richDiv : markdownPre;
+                    
+                    // Create a range and selection
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    
+                    // Remove copy button temporarily
+                    const copyBtn = activeView.querySelector('.copy-button');
+                    if (copyBtn) copyBtn.style.display = 'none';
+                    
+                    // Select the content
+                    range.selectNodeContents(activeView);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    // Execute copy command
+                    document.execCommand('copy');
+                    
+                    // Deselect and restore button
+                    selection.removeAllRanges();
+                    if (copyBtn) copyBtn.style.display = 'flex';
+                    
+                    copyButton.innerHTML = '<i class="material-icons">check</i>';
+                    copyButton.classList.add('copied');
+                    setTimeout(() => {
+                        copyButton.innerHTML = '<i class="material-icons">content_copy</i>';
+                        copyButton.classList.remove('copied');
+                    }, 2000);
+                };
+                const activeView = document.getElementById('viewToggle').checked ? richView : markdownView;
+                activeView.appendChild(copyButton);
+                
+                status.classList.remove('loading-dots');
+                status.textContent = `Daten für ${sortedArtists.length} Künstler*innen formatiert.`;
                 
                 log('Process completed successfully', 'success');
                 
