@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Landstreicher Booking Tour Formatter</title>
+    <style>
+        body { 
+            font-family: system-ui; 
+            max-width: 1000px; 
+            margin: 2rem auto; 
+            padding: 0 1rem; 
+            line-height: 1.5;
+        }
+        button { 
+            padding: 1rem 2rem; 
+            font-size: 1.2rem; 
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre { 
+            white-space: pre-wrap; 
+            background: #f5f5f5; 
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .output { 
+            margin-top: 2rem; 
+        }
+        .status {
+            margin-top: 1rem;
+            color: #666;
+        }
+        .log {
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 0.2rem 0;
+        }
+        .log-time {
+            color: #666;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .log-success {
+            color: #28a745;
+        }
+        .rich-view {
+            font-family: system-ui;
+        }
+        .rich-view a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .rich-view a:hover {
+            text-decoration: underline;
+        }
+        .rich-view strong {
+            color: #333;
+        }
+        .toggle-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 1rem;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #007bff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <h1>Landstreicher Booking Tour Formatter</h1>
+    <button onclick="formatFeed()">Aktuellen Feed formatieren</button>
+    <div class="toggle-switch">
+        <span>Markdown</span>
+        <label class="switch">
+            <input type="checkbox" id="viewToggle" onchange="toggleView()">
+            <span class="slider"></span>
+        </label>
+        <span>Rich Text</span>
+    </div>
+    <div class="status"></div>
+    <div class="log"></div>
+    <div class="output markdown-view"></div>
+    <div class="output rich-view" style="display: none;"></div>
+
+    <script>
+        const logDiv = document.querySelector('.log');
+        
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+
+        function toggleView() {
+            const markdownView = document.querySelector('.markdown-view');
+            const richView = document.querySelector('.rich-view');
+            const isRichView = document.getElementById('viewToggle').checked;
+
+            markdownView.style.display = isRichView ? 'none' : 'block';
+            richView.style.display = isRichView ? 'block' : 'none';
+        }
+
+        async function formatFeed() {
+            const output = document.querySelector('.output');
+            const status = document.querySelector('.status');
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            
+            output.innerHTML = '';
+            status.textContent = 'Lade Feed...';
+            logDiv.innerHTML = '';
+            
+            log('Starting feed processing...');
+            
+            try {
+                const RSS_URL = 'https://landstreicher-booking.de/feed/dates.rss';
+                const fullUrl = proxyUrl + encodeURIComponent(RSS_URL);
+                log(`Using proxy: ${proxyUrl}`);
+                log(`Full URL: ${fullUrl}`);
+                
+                log('Fetching RSS feed...');
+                const response = await fetch(fullUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                log('Feed eingelesen ✅. Verarbeitung kann bis zu 1 Minute dauern...');
+                const text = await response.text();
+                log(`Received ${text.length} bytes of data`);
+                
+                status.textContent = 'Verarbeite Daten...';
+                
+                log('Parsing XML...');
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, 'text/xml');
+                
+                if (xml.querySelector('parsererror')) {
+                    throw new Error('Ungültiges XML Format');
+                }
+                
+                const items = xml.querySelectorAll('item');
+                log(`Found ${items.length} items in feed`);
+                
+                // Group by artist
+                const artists = {};
+                let processedItems = 0;
+                
+                items.forEach(item => {
+                    try {
+                        const description = item.querySelector('description').textContent;
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = description;
+                        
+                        const artistElement = tempDiv.querySelector('li:nth-child(1)');
+                        const dateElement = tempDiv.querySelector('li:nth-child(2)');
+                        const tourElement = tempDiv.querySelector('li:nth-child(3)');
+                        const cityElement = tempDiv.querySelector('li:nth-child(4)');
+                        const venueElement = tempDiv.querySelector('li:nth-child(5)');
+                        
+                        if (!artistElement || !dateElement || !cityElement || !venueElement) {
+                            log(`Warning: Incomplete data in item`, 'error');
+                            return;
+                        }
+                        
+                        const artist = artistElement.textContent.replace('Artist:', '').trim();
+                        const date = dateElement.textContent.replace('Datum:', '').trim();
+                        const tour = tourElement ? tourElement.textContent.replace('Tour:', '').trim() : 'Festivals 2025';
+                        const city = cityElement.textContent.replace('Stadt:', '').trim();
+                        const venue = venueElement.textContent.replace('Venue:', '').trim();
+                        
+                        // Fix artist URL extraction from calendar link
+                        const calendarLink = tempDiv.querySelector('a[href*="google.com/calendar"]');
+                        let artistUrl = '';
+                        if (calendarLink) {
+                            const spropMatch = calendarLink.href.match(/sprop=website:([^&]+)/);
+                            if (spropMatch) {
+                                artistUrl = decodeURIComponent(spropMatch[1]);
+                            }
+                        }
+                        
+                        if (!artists[artist]) {
+                            artists[artist] = { 
+                                url: artistUrl,
+                                tours: {}
+                            };
+                            log(`New artist found: ${artist} with URL: ${artistUrl}`);
+                        }
+                        
+                        if (!artists[artist].tours[tour]) {
+                            artists[artist].tours[tour] = [];
+                        }
+                        
+                        const dateMatch = date.match(/\d{2}\.\d{2}\.\d{2}/);
+                        if (!dateMatch) {
+                            log(`Warning: Invalid date format: ${date}`, 'error');
+                            return;
+                        }
+                        
+                        const formattedDate = dateMatch[0];
+                        const location = `${city.replace(', DE', '')}, ${venue}`;
+                        
+                        artists[artist].tours[tour].push({
+                            date: formattedDate,
+                            location: location
+                        });
+                        
+                        processedItems++;
+                        
+                    } catch (itemError) {
+                        log(`Error processing item: ${itemError.message}`, 'error');
+                    }
+                });
+                
+                log(`Successfully processed ${processedItems} items`);
+                
+                // Sort artists
+                const sortedArtists = Object.keys(artists).sort();
+                log(`Sorting ${sortedArtists.length} artists`);
+                
+                // Generate output
+                let formatted = '';
+                
+                sortedArtists.forEach(artist => {
+                    const data = artists[artist];
+                    formatted += `**${artist} -** [Artist Info](${data.url})\n\n`;
+                    
+                    const sortedTours = Object.keys(data.tours).sort((a, b) => {
+                        if (a.includes('Festival')) return -1;
+                        if (b.includes('Festival')) return 1;
+                        return a.localeCompare(b);
+                    });
+                    
+                    sortedTours.forEach(tour => {
+                        const events = data.tours[tour];
+                        formatted += `**${tour}**\n\n`;
+                        
+                        events.sort((a, b) => {
+                            const dateA = a.date.split('.').reverse().join('');
+                            const dateB = b.date.split('.').reverse().join('');
+                            return dateA.localeCompare(dateB);
+                        });
+                        
+                        events.forEach(event => {
+                            formatted += `- ${event.date} ${event.location}\n`;
+                        });
+                        formatted += '\n';
+                    });
+                });
+                
+                log('Formatting complete, displaying results');
+                
+                const markdownPre = document.createElement('pre');
+                markdownPre.textContent = formatted;
+                
+                const richDiv = document.createElement('div');
+                richDiv.innerHTML = marked.parse(formatted);
+                
+                const markdownView = document.querySelector('.markdown-view');
+                const richView = document.querySelector('.rich-view');
+                
+                markdownView.innerHTML = '';
+                richView.innerHTML = '';
+                markdownView.appendChild(markdownPre);
+                richView.appendChild(richDiv);
+                
+                status.textContent = `${sortedArtists.length} Künstler erfolgreich formatiert`;
+                
+                log('Process completed successfully', 'success');
+                
+            } catch (error) {
+                output.innerHTML = '';
+                status.textContent = `Fehler: ${error.message}`;
+                log(`Fatal error: ${error.message}`, 'error');
+                console.error('Processing error:', error);
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
