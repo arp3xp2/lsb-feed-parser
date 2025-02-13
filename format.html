@@ -365,6 +365,7 @@
                 // Group by artist
                 const artists = {};
                 let processedItems = 0;
+                const uncategorizedShows = [];
                 
                 items.forEach(item => {
                     try {
@@ -393,7 +394,8 @@
                         
                         const artist = artistElement.textContent.replace('Artist:', '').trim();
                         const date = dateElement.textContent.replace('Datum:', '').trim();
-                        const tour = tourElement ? tourElement.textContent.replace('Tour:', '').trim() : 'Festivals 2025';
+                        const tour = tourElement ? tourElement.textContent.replace('Tour:', '').trim() : 
+                            venueElement.textContent.replace('Venue:', '').trim().toLowerCase().includes('festival') ? 'Festivals 2025' : '⚠️ Nicht kategorisiert';
                         const city = cityElement.textContent.replace('Stadt:', '').trim();
                         const venue = venueElement.textContent.replace('Venue:', '').trim();
                         
@@ -434,6 +436,16 @@
                         });
                         
                         processedItems++;
+                        
+                        if (!tourElement) {
+                            log(`Tour-Info fehlt für ${artist} in ${city} (${venue})`, 'warning');
+                            uncategorizedShows.push({
+                                artist,
+                                date,
+                                city,
+                                venue
+                            });
+                        }
                         
                     } catch (itemError) {
                         log(`Error processing item: ${itemError.message}`, 'error');
@@ -488,6 +500,13 @@
                         formatted += '\n';
                     }
                 });
+                
+                if (uncategorizedShows.length > 0) {
+                    log('⚠️ Zu überprüfende Shows:', 'warning');
+                    uncategorizedShows.forEach(show => {
+                        log(`${show.artist}: ${show.date} - ${show.city}, ${show.venue}`, 'warning');
+                    });
+                }
                 
                 log('Formatierung abgeschlossen', 'success');
                 
