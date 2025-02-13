@@ -22,7 +22,7 @@
             font-weight: bold;
             line-height: 150%;
             letter-spacing: normal;
-            text-align: center;
+            text-align: left;
             margin-bottom: 2rem;
         }
 
@@ -438,11 +438,19 @@
                     const data = artists[artist];
                     formatted += `**${artist} -** [Artist Info](${data.url})\n\n`;
                     
-                    const sortedTours = Object.keys(data.tours).sort((a, b) => {
-                        if (a.includes('Festival')) return -1;
-                        if (b.includes('Festival')) return 1;
-                        return a.localeCompare(b);
+                    // Get earliest date for each tour
+                    const tourDates = Object.entries(data.tours).map(([tourName, events]) => {
+                        const earliestDate = events.reduce((earliest, event) => {
+                            const eventDate = event.date.split('.').reverse().join('');
+                            return earliest === '' || eventDate < earliest ? eventDate : earliest;
+                        }, '');
+                        return { tourName, earliestDate };
                     });
+
+                    // Sort tours by their earliest date
+                    const sortedTours = tourDates.sort((a, b) => {
+                        return a.earliestDate.localeCompare(b.earliestDate);
+                    }).map(tour => tour.tourName);
                     
                     sortedTours.forEach(tour => {
                         const events = data.tours[tour];
