@@ -265,6 +265,13 @@
             animation: loadingDots 1.5s infinite;
             width: 1em;
         }
+
+        .rich-view > p:has(strong:first-child) {
+            margin-top: 4em;
+        }
+        .rich-view > p:has(strong:first-child):first-child {
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -425,16 +432,16 @@
                     }
                 });
                 
-                log(`Successfully processed ${processedItems} items`);
+                log(`${processedItems} Termine verarbeitet.`);
                 
                 // Sort artists
                 const sortedArtists = Object.keys(artists).sort();
-                log(`Sorting ${sortedArtists.length} artists`);
+                log(`${sortedArtists.length} Künstler*innen sortiert.`);
                 
                 // Generate output
                 let formatted = '';
                 
-                sortedArtists.forEach(artist => {
+                sortedArtists.forEach((artist, index) => {
                     const data = artists[artist];
                     formatted += `**${artist} -** [Artist Info](${data.url})\n\n`;
                     
@@ -467,9 +474,14 @@
                         });
                         formatted += '\n';
                     });
+
+                    // Add one extra line break between artists, but not after the last one
+                    if (index < sortedArtists.length - 1) {
+                        formatted += '\n';
+                    }
                 });
                 
-                log('Formatting complete, displaying results');
+                log('Formatierung abgeschlossen', 'success');
                 
                 const markdownPre = document.createElement('pre');
                 markdownPre.textContent = formatted;
@@ -524,8 +536,6 @@
                 
                 status.classList.remove('loading-dots');
                 status.textContent = `Daten für ${sortedArtists.length} Künstler*innen formatiert.`;
-                
-                log('Process completed successfully', 'success');
                 
             } catch (error) {
                 output.innerHTML = '';
