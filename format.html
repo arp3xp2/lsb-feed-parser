@@ -372,11 +372,19 @@
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = description;
                         
-                        const artistElement = tempDiv.querySelector('li:nth-child(1)');
-                        const dateElement = tempDiv.querySelector('li:nth-child(2)');
-                        const tourElement = tempDiv.querySelector('li:nth-child(3)');
-                        const cityElement = tempDiv.querySelector('li:nth-child(4)');
-                        const venueElement = tempDiv.querySelector('li:nth-child(5)');
+                        // Helper function to find elements by text content
+                        function querySelector(parent, text) {
+                            return Array.from(parent.querySelectorAll('li')).find(li => {
+                                const strong = li.querySelector('strong');
+                                return strong && strong.textContent.includes(text);
+                            });
+                        }
+
+                        const artistElement = querySelector(tempDiv, 'Artist:');
+                        const dateElement = querySelector(tempDiv, 'Datum:');
+                        const tourElement = querySelector(tempDiv, 'Tour:');
+                        const cityElement = querySelector(tempDiv, 'Stadt:');
+                        const venueElement = querySelector(tempDiv, 'Venue:');
                         
                         if (!artistElement || !dateElement || !cityElement || !venueElement) {
                             log(`Warning: Incomplete data in item`, 'error');
@@ -535,7 +543,7 @@
                 activeView.appendChild(copyButton);
                 
                 status.classList.remove('loading-dots');
-                status.textContent = `Daten für ${sortedArtists.length} Künstler*innen formatiert.`;
+                status.textContent = `${processedItems} Termine für ${sortedArtists.length} Künstler*innen formatiert.`;
                 
             } catch (error) {
                 output.innerHTML = '';
