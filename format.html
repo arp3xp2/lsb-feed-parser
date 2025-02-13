@@ -125,15 +125,15 @@
     <div class="toggle-switch">
         <span>Markdown</span>
         <label class="switch">
-            <input type="checkbox" id="viewToggle" onchange="toggleView()">
+            <input type="checkbox" id="viewToggle" onchange="toggleView()" checked>
             <span class="slider"></span>
         </label>
         <span>Rich Text</span>
     </div>
     <div class="status"></div>
     <div class="log"></div>
-    <div class="output markdown-view"></div>
-    <div class="output rich-view" style="display: none;"></div>
+    <div class="output markdown-view" style="display: none;"></div>
+    <div class="output rich-view"></div>
 
     <script>
         const logDiv = document.querySelector('.log');
