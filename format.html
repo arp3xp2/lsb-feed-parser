@@ -298,7 +298,8 @@
             const entry = document.createElement('div');
             entry.className = `log-entry log-${type}`;
             const time = new Date().toLocaleTimeString();
-            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            const formattedMessage = message.replace(/\n/g, '<br>');
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${formattedMessage}`;
             logDiv.appendChild(entry);
             logDiv.scrollTop = logDiv.scrollHeight;
             console.log(`[${type}] ${message}`);
@@ -414,7 +415,7 @@
                                 url: artistUrl,
                                 tours: {}
                             };
-                            log(`New artist found: ${artist} with URL: ${artistUrl}`);
+                            log(`Artist found: ${artist} with URL: ${artistUrl}`);
                         }
                         
                         if (!artists[artist].tours[tour]) {
@@ -502,10 +503,15 @@
                 });
                 
                 if (uncategorizedShows.length > 0) {
-                    log('⚠️ Zu überprüfende Shows:', 'warning');
-                    uncategorizedShows.forEach(show => {
-                        log(`${show.artist}: ${show.date} - ${show.city}, ${show.venue}`, 'warning');
-                    });
+                    const shows = uncategorizedShows
+                        .filter(show => !show.venue.toLowerCase().includes('festival'))
+                        .map(show => 
+                            `<span class="log-error">${show.artist} in ${show.city} (${show.venue}) am ${show.date}</span>`
+                        ).join('\n');
+                    
+                    if (shows) {
+                        log(`⚠️ Tour/Festival-Kategorisierung bitte prüfen für:\n${shows}`, 'info');
+                    }
                 }
                 
                 log('Formatierung abgeschlossen', 'success');
